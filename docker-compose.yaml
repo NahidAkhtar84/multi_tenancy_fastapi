@@ -1,0 +1,37 @@
+version: "3.7"
+services:
+  serverats:
+    image: ats-test:latest
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    container_name: ats-test
+    # command: python3 app/scripts/demo_data.py arg1 arg2
+    restart: unless-stopped
+    volumes:
+      - ./app/alembic:/code/app/alembic
+      - ./log_records:/code/log_records
+    env_file:
+      - .env
+    ports:
+      - 8002:8002
+    depends_on:
+      - testpgdb
+    networks:
+      - ats_network
+  testpgdb:
+    image: postgres:12
+    container_name: pgdbats
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - ${POSTGRES_PORT}:5432
+    networks:
+      - ats_network
+networks:
+  ats_network:
+    driver: bridge
+
