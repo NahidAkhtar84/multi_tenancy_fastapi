@@ -69,10 +69,12 @@ def tenant_create(name: str, schema: str, host: str) -> None:
         db.commit()
 
 def get_tenant(req: Request) -> Tenant:
-    host_without_port = req.headers["host"].split(":", 1)[0]
-
-    with with_db(None) as db:
-      tenant = db.query(Tenant).filter(Tenant.host==host_without_port).one_or_none()
+    tenant = None
+    host_without_port = req.headers["host"].split(":", 1)[0].split(".")[0]
+    
+    if host_without_port:
+        with with_db(host_without_port) as db:
+            tenant = db.query(Tenant).filter(Tenant.host==host_without_port).one_or_none()
 
     if tenant is None:
         raise HTTPException(
