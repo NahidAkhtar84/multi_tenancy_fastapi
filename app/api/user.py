@@ -37,7 +37,6 @@ def create_new_user(
     """
     Create new user.
     """
-    user_crud.user_already_exists(db, user_email=user_in.email)
 
     return user_crud.create(db, obj_in=user_in)
 
