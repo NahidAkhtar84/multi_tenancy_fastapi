@@ -29,6 +29,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     ports:
       - ${POSTGRES_PORT}:5432
+    command: -p ${POSTGRES_PORT}
     networks:
       - ats_network
 networks:

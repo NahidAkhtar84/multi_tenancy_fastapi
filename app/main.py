@@ -8,43 +8,22 @@ from app.core.config import settings
 from app.core.session import engine, SessionLocal
 from app.models.base import Base, get_shared_metadata
 from app.core.log_config import logger
-
-app = FastAPI(title=settings.PROJECT_NAME, version=settings.FULL_VERSION)
-
-
-# engine.execute(schema.CreateSchema("shared"))
-# get_shared_metadata().create_all(bind=engine)
 from alembic import context
 from alembic.config import Config
 from alembic import command
 from os import path
 from alembic.migration import MigrationContext
 
+app = FastAPI(title=settings.PROJECT_NAME, version=settings.FULL_VERSION)
+
+
 root_path = path.dirname(path.abspath(__file__))
 
-from app.api.deps import tenant_create
-tenant_create("test_t2", "test_t2s", "test_t2")
-
-# with engine.begin() as db:
-#     # context = MigrationContext.configure(db)
-#     # if context.get_current_revision() is not None:
-#     #     print("Database already exists.")
-#         # return None
-
-#     alembic_cfg = Config("alembic.ini")
-#     alembic_cfg.set_main_option("script_location", "app/alembic") 
-#     alembic_cfg.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
-
-#     # db.execute(schema.CreateSchema("shared"))
-#     # get_shared_metadata().create_all(bind=db)
-
-#     alembic_cfg.attributes["connection"] = db
-#     command.stamp(alembic_cfg, "head", purge=True)
 
 with engine.begin() as db:
     context = MigrationContext.configure(db)
     if context.get_current_revision() is not None:
-        print("******************Database already exists.")
+        print("Database already exists.")
     else:
         db.execute(schema.CreateSchema("shared"))
         get_shared_metadata().create_all(bind=db)
