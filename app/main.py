@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination
+import sqlalchemy as sa
 from sqlalchemy import schema
 
 from app.api.routers import api_router
@@ -13,6 +14,7 @@ from alembic.config import Config
 from alembic import command
 from os import path
 from alembic.migration import MigrationContext
+from app.core.alembic_ops import alembic_upgrade_head
 
 app = FastAPI(title=settings.PROJECT_NAME, version=settings.FULL_VERSION)
 
@@ -20,20 +22,19 @@ app = FastAPI(title=settings.PROJECT_NAME, version=settings.FULL_VERSION)
 root_path = path.dirname(path.abspath(__file__))
 
 
-with engine.begin() as db:
-    context = MigrationContext.configure(db)
-    if context.get_current_revision() is not None:
-        print("Database already exists.")
-    else:
-        db.execute(schema.CreateSchema("shared"))
-        get_shared_metadata().create_all(bind=db)
+# with engine.begin() as db:
+#     context = MigrationContext.configure(db)
+# #     inspector = sa.inspect(engine)
+# #     if not "shared" in inspector.get_schema_names():
+# #         db.execute(schema.CreateSchema("shared"))
+# #     get_shared_metadata().create_all(bind=db)
 
-    alembic_cfg = Config("alembic.ini")
-    alembic_cfg.set_main_option("script_location", "app/alembic") 
-    alembic_cfg.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
+    # alembic_cfg = Config("alembic.ini")
+    # alembic_cfg.set_main_option("script_location", "app/alembic") 
+    # alembic_cfg.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
 
-    alembic_cfg.attributes["connection"] = db
-    command.stamp(alembic_cfg, "head", purge=True)
+    # alembic_cfg.attributes["connection"] = db
+    # command.stamp(alembic_cfg, "head", purge=True)
 
 app.add_middleware(
         CORSMiddleware,
@@ -59,27 +60,30 @@ def read_root():
     return settings.FULL_VERSION
 
 
-
-
-
 # @app.on_event("startup")
 # def startup():
+#     with engine.begin() as db:
+#         inspector = sa.inspect(engine)
+#         if not "shared" in inspector.get_schema_names():
+#             db.execute(schema.CreateSchema("shared"))
+            
 #     logger.info("🚀 [Starting up] Initializing DB data...")
-#     alembic_upgrade_head("public", "d6ba8c13303e")
+#     alembic_upgrade_head("public")
+#     update_database_with_latest_head()
 #     logger.info("🎽 [Job] Running test Job")
 
-# import argparse
-# # import sqlalchemy as sa
-# from alembic import command
-# from alembic.config import Config
-# # from loguru import logger
-# # from sentry_sdk import capture_exception
+import argparse
+# import sqlalchemy as sa
+from alembic import command
+from alembic.config import Config
+# from loguru import logger
+# from sentry_sdk import capture_exception
 
-# # from app.config import get_settings
-# # from app.db import SQLALCHEMY_DATABASE_URL, with_db
-# from app.core.decorator import timer
+# from app.config import get_settings
+# from app.db import SQLALCHEMY_DATABASE_URL, with_db
+from app.core.decorator import timer
 
-# # settings = get_settings()
+# settings = get_settings()
 
 
 # @timer
@@ -92,8 +96,8 @@ def read_root():
 #         url = settings.SQLALCHEMY_DATABASE_URI
 #     try:
 #         # create Alembic config and feed it with paths
-#         config = Config(str("app/alembic.ini"))
-#         config.set_main_option("script_location", str("app/alembic"))  # replace("%", "%%")
+#         config = Config("alembic.ini")
+#         config.set_main_option("script_location", "app/alembic")  # replace("%", "%%")
 #         config.set_main_option("sqlalchemy.url", url)
 #         config.cmd_opts = argparse.Namespace()  # arguments stub
 
@@ -119,7 +123,18 @@ def read_root():
 #         # upgrade command
 #         command.upgrade(config, revision, sql=sql, tag=tag)
 #     except Exception as e:
-#         logger.error(e)
+#         logger.error(f">>: {e}")
 
 #     logger.info("✅ Schema upgraded for: " + tenant_name + " to version: " + revision)
 #     print("✅ Schema upgraded for: " + tenant_name + " to version: " + revision)
+
+
+
+def update_database_with_latest_head():
+    with engine.begin() as db:
+        alembic_cfg = Config("alembic.ini")
+        alembic_cfg.set_main_option("script_location", "app/alembic") 
+        alembic_cfg.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
+
+        alembic_cfg.attributes["connection"] = db
+        command.stamp(alembic_cfg, "head", purge=True)

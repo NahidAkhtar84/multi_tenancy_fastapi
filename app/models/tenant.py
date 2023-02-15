@@ -14,3 +14,14 @@ class Tenant(Base):
     host = Column("host", String(256), nullable=False, unique=True)
 
     __table_args__ = ({"schema": "shared"},)
+    
+    
+class TenanUser(Base):
+    __tablename__ = "tenant_users"
+
+    id = Column("id", Integer, primary_key=True, nullable=False)
+    name = Column("name", String(256))
+    email = Column("email", String, nullable=False, index=True, unique=True)
+    status = Column("status", String(256))
+
+    __table_args__ = ({"schema": "shared"},)

@@ -51,11 +51,11 @@ def tenant_create(name: str, schema: str, host: str) -> None:
     with with_db(schema) as db:
         context = MigrationContext.configure(db.connection())
         script = alembic.script.ScriptDirectory.from_config(alembic_cfg)
+        print("<><><>", context.get_current_revision(), script.get_current_head())
         if context.get_current_revision() != script.get_current_head():
             raise RuntimeError(
                 "Database is not up-to-date. Execute migrations before adding new tenants."
             )
-
         tenant = Tenant(
             name=name,
             host=host,
