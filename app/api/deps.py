@@ -1,4 +1,5 @@
 import alembic
+import argparse
 import sqlalchemy as sa
 
 from typing import Generator, Optional
@@ -11,6 +12,7 @@ from sqlalchemy.orm import Session
 from contextlib import contextmanager
 from alembic.migration import MigrationContext
 from alembic.config import Config
+from alembic import command
 
 from app.core import const
 from app.core.config import settings
@@ -42,11 +44,52 @@ def with_db(tenant_schema: Optional[str]):
     finally:
         db.close()
 
+def tenant_update(tenant_name: str, revision="head", url: str = None):
+    logger.info("🔺 [Schema upgrade] " + tenant_name + " to version: " + revision)
+    print("🔺[Schema upgrade] " + tenant_name + " to version: " + revision)
+    # set the paths values
+
+    if url is None:
+        url = settings.SQLALCHEMY_DATABASE_URI
+    try:
+        # create Alembic config and feed it with paths
+        config = Config("alembic.ini")
+        config.set_main_option("script_location", "app/alembic") 
+        config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
+        # config.cmd_opts = argparse.Namespace()  # arguments stub
+
+        # If it is required to pass -x parameters to alembic
+        # x_arg = "".join(["tenant=", tenant_name])  # "dry_run=" + "True"
+        # if not hasattr(config.cmd_opts, "x"):
+        #     if x_arg is not None:
+        #         setattr(config.cmd_opts, "x", [])
+        #         if isinstance(x_arg, list) or isinstance(x_arg, tuple):
+        #             for x in x_arg:
+        #                 config.cmd_opts.x.append(x)
+        #         else:
+        #             config.cmd_opts.x.append(x_arg)
+        #     else:
+        #         setattr(config.cmd_opts, "x", None)
+
+        # prepare and run the command
+        revision = revision
+        sql = False
+        tag = None
+        # command.stamp(config, revision, sql=sql, tag=tag)
+
+        # upgrade command
+        # command.stamp(config, "head", purge=True)
+        command.upgrade(config, revision, sql=sql, tag=tag)
+    except Exception as e:
+        logger.error(e)
+
+
 
 def tenant_create(name: str, schema: str, host: str) -> None:
     alembic_cfg = Config("alembic.ini")
     alembic_cfg.set_main_option("script_location", "app/alembic") 
     alembic_cfg.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
+    config.cmd_opts = argparse.Namespace()
 
     with with_db(schema) as db:
         context = MigrationContext.configure(db.connection())
@@ -62,11 +105,28 @@ def tenant_create(name: str, schema: str, host: str) -> None:
             schema=schema,
         )
         db.add(tenant)
-
         db.execute(sa.schema.CreateSchema(schema))
-        get_tenant_specific_metadata().create_all(bind=db.connection())
-
         db.commit()
+        # get_tenant_specific_metadata().create_all(bind=db.connection())
+
+        config = Config("alembic.ini")
+        config.set_main_option("script_location", "app/alembic") 
+        config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
+
+        x_arg = "".join(["tenant=", schema])
+        if not hasattr(config.cmd_opts, "x"):
+            if x_arg is not None:
+                setattr(config.cmd_opts, "x", [])
+                if isinstance(x_arg, list) or isinstance(x_arg, tuple):
+                    for x in x_arg:
+                        config.cmd_opts.x.append(x)
+                else:
+                    config.cmd_opts.x.append(x_arg)
+            else:
+                setattr(config.cmd_opts, "x", None)
+        #Todo: get the first alembic version dinamically.
+        command.stamp(config, "fe69bd1396dc", purge=True)
+        
 
 def get_tenant(req: Request) -> Tenant:
     host_without_port = req.headers["host"].split(":", 1)[0]

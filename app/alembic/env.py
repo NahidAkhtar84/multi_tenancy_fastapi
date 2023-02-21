@@ -8,6 +8,7 @@ from alembic import context
 from app.models.base import Base
 from app.core.config import settings
 from app.core.session import engine
+from app.core.log_config import logger
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -66,52 +67,45 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    # configuration = config.get_section(config.config_ini_section)
-    # configuration["sqlalchemy.url"] = get_url()
-    # connectable = engine_from_config(
-    #     configuration,
-    #     prefix="sqlalchemy.",
-    #     poolclass=pool.NullPool,
-    # )
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section),
+        prefix='sqlalchemy.',
+        poolclass=pool.NullPool)
 
-    # with connectable.connect() as connection:
-    #     context.configure(
-    #         connection=connection, target_metadata=target_metadata
-    #     )
+    with connectable.connect() as connection:
+        current_tenant = context.get_x_argument(as_dictionary=True).get("tenant")
+        #Todo: need to something about all_tenants_121
+        if current_tenant == "all_tenants_121":
+            #Todo: all schema name list dynamically
+            for tenant_schema_name in ["test_t2s"]:
+                conn = connection.execution_options(schema_translate_map={None: tenant_schema_name})
 
-    #     with context.begin_transaction():
-    #         context.run_migrations()
+                logger.info("Migrating tenant schema %s" % tenant_schema_name)
+                context.configure(
+                    connection=conn,
+                    target_metadata=target_metadata,
+                    version_table_schema=tenant_schema_name,
+                    include_schemas=True
+                )
 
-    translated = MetaData(naming_convention={
-        "ix": "ix_%(column_0_label)s",
-        "uq": "uq_%(table_name)s_%(column_0_name)s",
-        "ck": "ck_%(table_name)s_`%(constraint_name)s`",
-        "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-        "pk": "pk_%(table_name)s"
-      })
+                with context.begin_transaction():
+                    context.execute(f'set search_path to {tenant_schema_name}')
+                    context.run_migrations()
+        else:
+            conn = connection.execution_options(schema_translate_map={None: current_tenant})
 
-    def translate_schema(table, to_schema, constraint, referred_schema):
-        # pylint: disable=unused-argument
-        return to_schema
+            logger.info("Migrating tenant schema %s" % current_tenant)
+            context.configure(
+                connection=conn,
+                target_metadata=target_metadata,
+                version_table_schema=current_tenant,
+                include_schemas=True
+            )
 
-    for table in Base.metadata.tables.values():
-        table.tometadata(
-            translated,
-            schema="tenant_default" if table.schema == "tenant" else table.schema,
-            referred_schema_fn=translate_schema,
-        )
-
-    with engine.connect() as connection:
-        context.configure(
-            connection=connection,
-            target_metadata=translated,
-            compare_type=True,
-            transaction_per_migration=True,
-            include_schemas=True,
-        )
-
-        with context.begin_transaction():
-            context.run_migrations()
+            with context.begin_transaction():
+                context.execute(f'set search_path to {current_tenant}')
+                context.run_migrations()
+    
 
 
 if context.is_offline_mode():

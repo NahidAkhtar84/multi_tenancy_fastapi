@@ -3,7 +3,7 @@ from sqlalchemy import MetaData
 from sqlalchemy.ext.declarative import as_declarative, declared_attr, declarative_base
 
 
-metadata = MetaData(schema="tenant")
+metadata = MetaData()
 Base = declarative_base(metadata=metadata)
 
 

@@ -22,8 +22,9 @@ from alembic.migration import MigrationContext
 
 root_path = path.dirname(path.abspath(__file__))
 
-from app.api.deps import tenant_create
-tenant_create("test_t2", "test_t2s", "test_t2")
+from app.api.deps import tenant_create, tenant_update
+# tenant_create("test_t3", "test_t3s", "test_t3")
+# tenant_update("t2", "a155fef34a39")
 
 # with engine.begin() as db:
 #     # context = MigrationContext.configure(db)
@@ -41,20 +42,20 @@ tenant_create("test_t2", "test_t2s", "test_t2")
 #     alembic_cfg.attributes["connection"] = db
 #     command.stamp(alembic_cfg, "head", purge=True)
 
-with engine.begin() as db:
-    context = MigrationContext.configure(db)
-    if context.get_current_revision() is not None:
-        print("******************Database already exists.")
-    else:
-        db.execute(schema.CreateSchema("shared"))
-        get_shared_metadata().create_all(bind=db)
+# with engine.begin() as db:
+#     context = MigrationContext.configure(db)
+#     if context.get_current_revision() is not None:
+#         print("******************Database already exists.")
+#     else:
+#         db.execute(schema.CreateSchema("shared"))
+#         get_shared_metadata().create_all(bind=db)
 
-    alembic_cfg = Config("alembic.ini")
-    alembic_cfg.set_main_option("script_location", "app/alembic") 
-    alembic_cfg.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
+#     alembic_cfg = Config("alembic.ini")
+#     alembic_cfg.set_main_option("script_location", "app/alembic") 
+#     alembic_cfg.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
 
-    alembic_cfg.attributes["connection"] = db
-    command.stamp(alembic_cfg, "head", purge=True)
+#     alembic_cfg.attributes["connection"] = db
+#     command.stamp(alembic_cfg, "head", purge=True)
 
 app.add_middleware(
         CORSMiddleware,
