@@ -86,19 +86,12 @@ def tenant_update(tenant_name: str, revision="head", url: str = None):
 
 
 def tenant_create(name: str, schema: str, host: str) -> None:
-    alembic_cfg = Config("alembic.ini")
-    alembic_cfg.set_main_option("script_location", "app/alembic") 
-    alembic_cfg.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
+    config = Config("alembic.ini")
+    config.set_main_option("script_location", "app/alembic") 
+    config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
     config.cmd_opts = argparse.Namespace()
 
     with with_db(schema) as db:
-        context = MigrationContext.configure(db.connection())
-        script = alembic.script.ScriptDirectory.from_config(alembic_cfg)
-        if context.get_current_revision() != script.get_current_head():
-            raise RuntimeError(
-                "Database is not up-to-date. Execute migrations before adding new tenants."
-            )
-
         tenant = Tenant(
             name=name,
             host=host,
@@ -108,10 +101,6 @@ def tenant_create(name: str, schema: str, host: str) -> None:
         db.execute(sa.schema.CreateSchema(schema))
         db.commit()
         # get_tenant_specific_metadata().create_all(bind=db.connection())
-
-        config = Config("alembic.ini")
-        config.set_main_option("script_location", "app/alembic") 
-        config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
 
         x_arg = "".join(["tenant=", schema])
         if not hasattr(config.cmd_opts, "x"):
