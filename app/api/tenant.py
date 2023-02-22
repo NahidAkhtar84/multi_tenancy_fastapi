@@ -24,3 +24,17 @@ def create_new_tenant(
     tenant_create(tenant_name, tenant_name, tenant_name)
 
     return {"detail": f"Tenant with name {tenant_name} created successfully"}
+
+
+@tenant_router.post("/update",)
+def update_new_tenant(
+    *,
+    tenant_name: str
+) -> Any:
+    """
+    Create new tenant.
+    """
+    tenant_update(tenant_name)
+
+    return {"detail": f"Tenant with name {tenant_name} updated successfully"}
+

@@ -46,7 +46,6 @@ def with_db(tenant_schema: Optional[str]):
 
 def tenant_update(tenant_name: str, revision="head", url: str = None):
     logger.info("🔺 [Schema upgrade] " + tenant_name + " to version: " + revision)
-    print("🔺[Schema upgrade] " + tenant_name + " to version: " + revision)
     # set the paths values
 
     if url is None:
@@ -56,29 +55,27 @@ def tenant_update(tenant_name: str, revision="head", url: str = None):
         config = Config("alembic.ini")
         config.set_main_option("script_location", "app/alembic") 
         config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
-        # config.cmd_opts = argparse.Namespace()  # arguments stub
+        config.cmd_opts = argparse.Namespace()  # arguments stub
 
         # If it is required to pass -x parameters to alembic
-        # x_arg = "".join(["tenant=", tenant_name])  # "dry_run=" + "True"
-        # if not hasattr(config.cmd_opts, "x"):
-        #     if x_arg is not None:
-        #         setattr(config.cmd_opts, "x", [])
-        #         if isinstance(x_arg, list) or isinstance(x_arg, tuple):
-        #             for x in x_arg:
-        #                 config.cmd_opts.x.append(x)
-        #         else:
-        #             config.cmd_opts.x.append(x_arg)
-        #     else:
-        #         setattr(config.cmd_opts, "x", None)
+        x_arg = "".join(["tenant=", tenant_name])  # "dry_run=" + "True"
+        if not hasattr(config.cmd_opts, "x"):
+            if x_arg is not None:
+                setattr(config.cmd_opts, "x", [])
+                if isinstance(x_arg, list) or isinstance(x_arg, tuple):
+                    for x in x_arg:
+                        config.cmd_opts.x.append(x)
+                else:
+                    config.cmd_opts.x.append(x_arg)
+            else:
+                setattr(config.cmd_opts, "x", None)
 
         # prepare and run the command
         revision = revision
         sql = False
         tag = None
-        # command.stamp(config, revision, sql=sql, tag=tag)
 
         # upgrade command
-        # command.stamp(config, "head", purge=True)
         command.upgrade(config, revision, sql=sql, tag=tag)
     except Exception as e:
         logger.error(e)
