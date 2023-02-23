@@ -74,7 +74,6 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         current_tenant = context.get_x_argument(as_dictionary=True).get("tenant")
-        print(">>>", current_tenant)
         #Todo: need to something about all_tenants_121
         if current_tenant == "all_tenants_121":
             #Todo: all schema name list dynamically
@@ -94,7 +93,6 @@ def run_migrations_online() -> None:
                     context.run_migrations()
         else:
             conn = connection.execution_options(schema_translate_map={None: current_tenant})
-            print("<><><>", conn)
             logger.info("Migrating tenant schema %s" % current_tenant)
             context.configure(
                 connection=conn,
