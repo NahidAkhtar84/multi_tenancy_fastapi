@@ -42,28 +42,26 @@ def read_root():
 
 @app.on_event("startup")
 def startup():
-    logger.info("🚀 [Starting up] Initializing public schema and public revisions...")
+    logger.info("Initializing public schema and public revisions...✈️")
 
     def _has_table(engine, table_name):
         inspector = reflection.Inspector.from_engine(engine)
         tables = inspector.get_table_names()
         return table_name in tables
 
-    with engine.begin() as db:
-        #Todo: Need to read public_schema_name from env
-        public_schema_name = "shared"
-        if not db.dialect.has_schema(engine, public_schema_name):
-            db.execute(schema.CreateSchema("shared"))
-            get_shared_metadata().create_all(bind=db)
+    #Todo: Need to read public_schema_name from env
+    public_schema_name = "shared"
+    if not engine.dialect.has_schema(engine, public_schema_name):
+        engine.execute(schema.CreateSchema("shared"))
 
-        alembic_cfg = Config("alembic.ini")
-        alembic_cfg.set_main_option("script_location", "app/alembic")
-        alembic_cfg.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
-        alembic_cfg.attributes["connection"] = db
-        if _has_table(db, "alembic_version"):
-            # command.upgrade(alembic_cfg, "head", sql=False, tag=None)
-            pass
-        else:
-            command.stamp(alembic_cfg, "head", purge=True)
-        logger.info("🎽 [Job] Initialization complete.")
+    alembic_cfg = Config("alembic.ini")
+    alembic_cfg.set_main_option("script_location", "app/alembic")
+    alembic_cfg.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
+    alembic_cfg.attributes["connection"] = engine
+    if _has_table(engine, "alembic_version"):
+        logger.info("Public already uddated...⬆️")
+    else:
+        logger.info("Purging version to public...")
+        command.stamp(alembic_cfg, "head", purge=True)
+    logger.info("Initialization complete...🪂")
 
