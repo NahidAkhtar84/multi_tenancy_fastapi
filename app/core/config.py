@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     POSTGRES_DB: str
     POSTGRES_PORT: str
     SQLALCHEMY_DATABASE_URI: Optional[PostgresDsn] = None
+    POSTGRES_PUBLIC_SCHEMA: str
 
     MAIL_USER: str
     MAIL_PASSWORD: str

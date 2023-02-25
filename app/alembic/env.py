@@ -85,7 +85,7 @@ def run_migrations_online() -> None:
                     connection=conn,
                     target_metadata=target_metadata,
                     version_table_schema=tenant_schema_name,
-                    include_schemas=True
+                    # include_schemas=True
                 )
 
                 with context.begin_transaction():
@@ -98,7 +98,7 @@ def run_migrations_online() -> None:
                 connection=conn,
                 target_metadata=target_metadata,
                 version_table_schema=current_tenant,
-                include_schemas=True
+                # include_schemas=True
             )
 
             with context.begin_transaction():

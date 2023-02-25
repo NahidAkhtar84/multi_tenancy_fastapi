@@ -1,29 +1,18 @@
-import alembic
 import argparse
-import sqlalchemy as sa
-
+from contextlib import contextmanager
 from typing import Generator, Optional
 
+import sqlalchemy as sa
+from alembic import command
+from alembic.config import Config
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
-import jwt
-from pydantic import ValidationError
 from sqlalchemy.orm import Session
-from contextlib import contextmanager
-from alembic.migration import MigrationContext
-from alembic.config import Config
-from alembic import command
 
-from app.core import const
 from app.core.config import settings
-from app.crud.user import CRUDUser
-from app.core.session import SessionLocal
-from app.models import User
 from app.core.log_config import logger
 from app.core.session import engine
-from app.models.base import get_tenant_specific_metadata
 from app.models.tenant import Tenant
-
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API}/auth/login-access-token")
@@ -44,16 +33,16 @@ def with_db(tenant_schema: Optional[str]):
     finally:
         db.close()
 
-def tenant_update(tenant_name: str, revision="head", url: str = None):
-    logger.info("🔺 [Schema upgrade] " + tenant_name + " to version: " + revision)
-    # set the paths values
+
+def alembic_update(tenant_name: str, revision: str = "head", url: str = None) -> None:
+    logger.info("<Schema upgrade>: [🔼] " + "Upgrading " + tenant_name + " to version: " + revision)
 
     if url is None:
         url = settings.SQLALCHEMY_DATABASE_URI
     try:
         # create Alembic config and feed it with paths
         config = Config("alembic.ini")
-        config.set_main_option("script_location", "app/alembic") 
+        config.set_main_option("script_location", "app/alembic")
         config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
         config.cmd_opts = argparse.Namespace()  # arguments stub
 
@@ -77,29 +66,21 @@ def tenant_update(tenant_name: str, revision="head", url: str = None):
 
         # upgrade command
         command.upgrade(config, revision, sql=sql, tag=tag)
+        logger.info("<Schema upgrade>: [✅]" + "Upgrading" + tenant_name + " to version: " + revision + "completed")
     except Exception as e:
-        logger.error(e)
+        logger.error(
+            "<Schema upgrade>: [❌]" + "Upgrading" + tenant_name + " to version: " + revision + "failed. " + f"Error: {e}")
 
 
+def alembic_create(tenant_name: str, revision: str = "head") -> None:
+    logger.info("<Schema create>: [🛠️] " + "Creating " + tenant_name)
+    try:
+        config = Config("alembic.ini")
+        config.set_main_option("script_location", "app/alembic")
+        config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
+        config.cmd_opts = argparse.Namespace()
 
-def tenant_create(name: str, schema: str, host: str) -> None:
-    config = Config("alembic.ini")
-    config.set_main_option("script_location", "app/alembic") 
-    config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
-    config.cmd_opts = argparse.Namespace()
-
-    with with_db(schema) as db:
-        tenant = Tenant(
-            name=name,
-            host=host,
-            schema=schema,
-        )
-        db.add(tenant)
-        db.execute(sa.schema.CreateSchema(schema))
-        db.commit()
-        # get_tenant_specific_metadata().create_all(bind=db.connection())
-
-        x_arg = "".join(["tenant=", schema])
+        x_arg = "".join(["tenant=", tenant_name])
         if not hasattr(config.cmd_opts, "x"):
             if x_arg is not None:
                 setattr(config.cmd_opts, "x", [])
@@ -110,15 +91,33 @@ def tenant_create(name: str, schema: str, host: str) -> None:
                     config.cmd_opts.x.append(x_arg)
             else:
                 setattr(config.cmd_opts, "x", None)
-        #Todo: get the first alembic version dinamically.
-        command.stamp(config, "fe69bd1396dc", purge=True)
-        
+        # Todo: get the first alembic version dinamically.
+        command.stamp(config, revision, purge=True)
+        logger.info("<Schema create>: [✅] " + "Creating " + revision + "to " + tenant_name + "completed")
+    except Exception as e:
+        logger.error(
+            "<Schema create>: [❌] " + "Creating " + revision + "to " + tenant_name + "failed. " + f"Error: {e}")
+
+
+def tenant_create(tenant_name: str, revision: str = "head") -> None:
+    logger.info("<Tenant create>: [🛠️] " + "Creating " + tenant_name)
+    with with_db(tenant_name) as db:
+        tenant = Tenant(
+            name=tenant_name,
+            host=tenant_name,
+            schema=tenant_name,
+        )
+        db.add(tenant)
+        db.execute(sa.schema.CreateSchema(tenant_name))
+        db.commit()
+    logger.info("<Tenant create>: [✅] " + "Completed " + tenant_name)
+
 
 def get_tenant(req: Request) -> Tenant:
     host_without_port = req.headers["host"].split(":", 1)[0]
 
     with with_db(None) as db:
-      tenant = db.query(Tenant).filter(Tenant.host==host_without_port).one_or_none()
+        tenant = db.query(Tenant).filter(Tenant.host == host_without_port).one_or_none()
 
     if tenant is None:
         raise HTTPException(
@@ -128,17 +127,7 @@ def get_tenant(req: Request) -> Tenant:
 
     return tenant
 
+
 def get_db(tenant: Tenant = Depends(get_tenant)) -> Generator:
     with with_db(tenant.schema) as db:
         yield db
-
-
-# def get_db() -> Generator:
-#     try:
-#         db = SessionLocal()
-#         yield db
-#     finally:
-#         db.close()
-
-
-user_crud = CRUDUser(User)
